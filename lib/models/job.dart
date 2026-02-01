@@ -1,5 +1,6 @@
 /// Job model representing a Monarch Core job.
 /// All fields that the API may return as null are nullable.
+/// createdAt and updatedAt are numeric timestamps (ms), not strings.
 class Job {
   const Job({
     this.id,
@@ -7,6 +8,7 @@ class Job {
     required this.status,
     this.machineId,
     this.message,
+    this.createdAt,
     this.updatedAt,
   });
 
@@ -15,17 +17,36 @@ class Job {
   final JobStatus status;
   final String? machineId;
   final String? message;
-  final String? updatedAt;
+  /// Unix timestamp in milliseconds. API returns a number.
+  final int? createdAt;
+  /// Unix timestamp in milliseconds. API returns a number.
+  final int? updatedAt;
 
   factory Job.fromJson(Map<String, dynamic> json) {
+    final idRaw = json['id'] ?? json['jobId'] ?? json['job_id'];
+    final id = idRaw is String ? idRaw : idRaw?.toString();
     return Job(
-      id: json['id'] as String?,
+      id: id,
       prompt: json['prompt'] as String?,
-      status: jobStatusFromString(json['status'] as String? ?? 'PENDING'),
+      status: _parseStatus(json['status']),
       machineId: json['machineId'] as String?,
       message: json['message'] as String?,
-      updatedAt: json['updatedAt'] as String?,
+      createdAt: _parseTimestamp(json['createdAt']),
+      updatedAt: _parseTimestamp(json['updatedAt']),
     );
+  }
+
+  static int? _parseTimestamp(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return null;
+  }
+
+  static JobStatus _parseStatus(dynamic value) {
+    if (value == null) return JobStatus.pending;
+    final s = value is String ? value : value.toString();
+    return jobStatusFromString(s);
   }
 
   Job copyWith({
@@ -34,7 +55,8 @@ class Job {
     JobStatus? status,
     String? machineId,
     String? message,
-    String? updatedAt,
+    int? createdAt,
+    int? updatedAt,
   }) {
     return Job(
       id: id ?? this.id,
@@ -42,6 +64,7 @@ class Job {
       status: status ?? this.status,
       machineId: machineId ?? this.machineId,
       message: message ?? this.message,
+      createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }

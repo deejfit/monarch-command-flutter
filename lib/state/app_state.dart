@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/job.dart';
+import '../models/job_timeline.dart';
 import '../models/machine.dart';
 import '../services/api_client.dart';
 
@@ -16,7 +17,7 @@ class AppState extends ChangeNotifier {
   late ApiClient _api;
   String? _selectedMachineId;
   List<Machine> _machines = [];
-  List<Job> _jobs = [];
+  List<JobWithTimeline> _jobTimelines = [];
   int _pollingIntervalMs = 3000;
   String? _error;
   bool _isLoading = false;
@@ -25,7 +26,13 @@ class AppState extends ChangeNotifier {
   String get apiBaseUrl => _apiBaseUrl;
   String? get selectedMachineId => _selectedMachineId;
   List<Machine> get machines => List.unmodifiable(_machines);
-  List<Job> get jobs => List.unmodifiable(_jobs);
+  List<JobWithTimeline> get jobTimelines => List.unmodifiable(_jobTimelines);
+
+  /// Flattened timeline: newest job first, then per job user → response → completed. (With reverse ListView, first item is at bottom.)
+  List<JobTimelineEntry> get entriesInOrder => [
+        for (final j in _jobTimelines) ...j.entries,
+      ];
+
   int get pollingIntervalMs => _pollingIntervalMs;
   String? get error => _error;
   bool get isLoading => _isLoading;
@@ -81,27 +88,44 @@ class AppState extends ChangeNotifier {
 
   Future<void> refreshJobs() async {
     if (!hasValidApiUrl) return;
+    final hasIncomplete = _jobTimelines.any((jt) {
+      final s = jt.job.status;
+      return s != JobStatus.done && s != JobStatus.error;
+    });
+    if (!hasIncomplete) {
+      _stopPolling();
+      return;
+    }
     _clearError();
     _isLoading = true;
     notifyListeners();
     try {
-      // Monarch Core may have a GET /jobs endpoint; if not, we keep jobs
-      // from POST response and poll individual job status.
-      // For now we only have GET /jobs/:jobId, so we refresh known jobs.
-      final updated = <Job>[];
-      for (final job in _jobs) {
+      final updated = <JobWithTimeline>[];
+      for (final jt in _jobTimelines) {
+        final job = jt.job;
+        final status = job.status;
+        if (status == JobStatus.done || status == JobStatus.error) {
+          updated.add(jt);
+          continue;
+        }
         final jobId = job.id;
         if (jobId == null || jobId.isEmpty) {
-          updated.add(job);
+          updated.add(jt);
           continue;
         }
         try {
-          updated.add(await _api.getJob(jobId));
+          final fetched = await _api.getJob(jobId);
+          updated.add(jt.applyStatusFromApi(fetched));
         } catch (_) {
-          updated.add(job);
+          updated.add(jt);
         }
       }
-      _jobs = updated;
+      _jobTimelines = updated;
+      final allComplete = updated.every((jt) {
+        final s = jt.job.status;
+        return s == JobStatus.done || s == JobStatus.error;
+      });
+      if (allComplete) _stopPolling();
     } on ApiException catch (e) {
       _error = e.message;
     } catch (e) {
@@ -126,8 +150,11 @@ class AppState extends ChangeNotifier {
         prompt: prompt,
         machineId: _selectedMachineId,
       );
-      _jobs = [job, ..._jobs];
+      // Store job (id from POST response) for polling GET /jobs/:jobId
+      _jobTimelines = [JobWithTimeline.fromJob(job), ..._jobTimelines];
       _startPolling();
+      // Poll immediately so we don't wait for first timer tick
+      refreshJobs();
       return job;
     } on ApiException catch (e) {
       _error = e.message;
@@ -167,7 +194,7 @@ class AppState extends ChangeNotifier {
   }
 
   void startPolling() {
-    if (_jobs.isNotEmpty && hasValidApiUrl) _startPolling();
+    if (_jobTimelines.isNotEmpty && hasValidApiUrl) _startPolling();
   }
 
   void stopPolling() => _stopPolling();

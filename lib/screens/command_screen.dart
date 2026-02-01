@@ -194,11 +194,12 @@ class _CommandScreenState extends State<CommandScreen> {
               );
             },
           ),
-          // Message list
+          // Message list (timeline: prompt + additive status updates)
           Expanded(
             child: Consumer<AppState>(
               builder: (_, state, __) {
-                if (state.jobs.isEmpty) {
+                final entries = state.entriesInOrder;
+                if (entries.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -228,10 +229,9 @@ class _CommandScreenState extends State<CommandScreen> {
                   controller: _scrollController,
                   reverse: true,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  itemCount: state.jobs.length,
+                  itemCount: entries.length,
                   itemBuilder: (_, i) {
-                    final job = state.jobs[i];
-                    return MessageBubble(job: job);
+                    return MessageBubble(entry: entries[i]);
                   },
                 );
               },

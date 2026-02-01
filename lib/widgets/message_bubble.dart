@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../models/job.dart';
+import '../models/job_timeline.dart';
 import 'status_badge.dart';
 
-/// Chat-style bubble showing a job (prompt + status).
+/// Chat-style bubble for one timeline entry (prompt or status update).
+/// Content is never replaced; status updates are additive.
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({super.key, required this.job});
+  const MessageBubble({super.key, required this.entry});
 
-  final Job job;
+  final JobTimelineEntry entry;
 
   @override
   Widget build(BuildContext context) {
-    final prompt = job.prompt ?? '—';
-    final message = job.message;
-    final hasMessage = message != null && message.isNotEmpty;
-
+    final isUser = entry.role == JobTimelineRole.user;
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(14),
@@ -24,7 +22,9 @@ class MessageBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.85,
         ),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: isUser
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -32,30 +32,11 @@ class MessageBubble extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              prompt,
+              entry.content,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                StatusBadge(status: job.status),
-                if (hasMessage) ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      message,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            StatusBadge(status: entry.status),
           ],
         ),
       ),

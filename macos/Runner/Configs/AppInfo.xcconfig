@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = monarch_command
+PRODUCT_NAME = Monarch
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.monarch.monarchCommand
+PRODUCT_BUNDLE_IDENTIFIER = com.risingstep.monarchcommand
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.monarch. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Rising Step. All rights reserved.

@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.monarch" "\0"
+            VALUE "CompanyName", "Rising Step" "\0"
             VALUE "FileDescription", "monarch_command" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "monarch_command" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.monarch. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Rising Step. All rights reserved." "\0"
             VALUE "OriginalFilename", "monarch_command.exe" "\0"
             VALUE "ProductName", "monarch_command" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

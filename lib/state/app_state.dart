@@ -7,13 +7,19 @@ import '../models/job_timeline.dart';
 import '../models/machine.dart';
 import '../services/api_client.dart';
 
+const String _defaultApiBaseUrl = 'http://localhost:3000';
+const String _apiBaseUrlFromEnv = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: _defaultApiBaseUrl,
+);
+
 /// App state. All state is read from the API; no local inference.
 class AppState extends ChangeNotifier {
-  AppState() {
+  AppState() : _apiBaseUrl = _apiBaseUrlFromEnv {
     _api = ApiClient(baseUrl: _apiBaseUrl);
   }
 
-  String _apiBaseUrl = 'http://localhost:3000';
+  String _apiBaseUrl;
   late ApiClient _api;
   String? _selectedMachineId;
   List<Machine> _machines = [];
@@ -41,7 +47,8 @@ class AppState extends ChangeNotifier {
     final trimmed = url.trim();
     if (trimmed == _apiBaseUrl) return;
     _apiBaseUrl = trimmed;
-    _api = ApiClient(baseUrl: _apiBaseUrl.isEmpty ? 'http://localhost:300' : _apiBaseUrl);
+    _api = ApiClient(
+        baseUrl: _apiBaseUrl.isEmpty ? _defaultApiBaseUrl : _apiBaseUrl);
     _error = null;
     _stopPolling();
     notifyListeners();

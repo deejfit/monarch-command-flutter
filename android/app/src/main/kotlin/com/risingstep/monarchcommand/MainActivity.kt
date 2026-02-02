@@ -1,4 +1,4 @@
-package com.monarch.monarch_command
+package com.risingstep.monarchcommand
 
 import io.flutter.embedding.android.FlutterActivity
 

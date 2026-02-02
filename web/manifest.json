@@ -1,6 +1,6 @@
 {
-    "name": "monarch_command",
-    "short_name": "monarch_command",
+    "name": "Monarch",
+    "short_name": "Monarch",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

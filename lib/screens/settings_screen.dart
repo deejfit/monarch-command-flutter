@@ -53,9 +53,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(),
                 ),
                 controller: _urlController,
-                onChanged: (value) => state.setApiBaseUrl(value),
                 keyboardType: TextInputType.url,
                 autocorrect: false,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    state.setApiBaseUrl(_urlController.text.trim());
+                    await state.refreshMachines();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Saved')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.save),
+                  label: const Text('Save'),
+                ),
               ),
               const SizedBox(height: 24),
               Text(

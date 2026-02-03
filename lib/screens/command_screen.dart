@@ -41,7 +41,7 @@ class _CommandScreenState extends State<CommandScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
-            0,
+            _scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
           );
@@ -227,7 +227,7 @@ class _CommandScreenState extends State<CommandScreen> {
                 }
                 return ListView.builder(
                   controller: _scrollController,
-                  reverse: true,
+                  reverse: false,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   itemCount: entries.length,
                   itemBuilder: (_, i) {
@@ -281,9 +281,7 @@ class _CommandScreenState extends State<CommandScreen> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onPrimary,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             )
                           : const Icon(Icons.send),

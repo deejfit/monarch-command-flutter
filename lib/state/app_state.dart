@@ -22,6 +22,7 @@ class AppState extends ChangeNotifier {
   String _apiBaseUrl;
   late ApiClient _api;
   String? _selectedMachineId;
+  String? _selectedClient;
   List<Machine> _machines = [];
   List<JobWithTimeline> _jobTimelines = [];
   int _pollingIntervalMs = 3000;
@@ -31,12 +32,28 @@ class AppState extends ChangeNotifier {
 
   String get apiBaseUrl => _apiBaseUrl;
   String? get selectedMachineId => _selectedMachineId;
+  String? get selectedClient => _selectedClient;
+
+  /// Clients available for selection: selected machine's clients, or union of all machines' when no machine selected.
+  List<String> get availableClients {
+    if (_selectedMachineId != null) {
+      final match =
+          _machines.where((m) => m.id == _selectedMachineId).toList();
+      return match.isEmpty ? const <String>[] : match.first.clients;
+    }
+    final union = <String>{};
+    for (final m in _machines) {
+      union.addAll(m.clients);
+    }
+    return union.toList()..sort();
+  }
+
   List<Machine> get machines => List.unmodifiable(_machines);
   List<JobWithTimeline> get jobTimelines => List.unmodifiable(_jobTimelines);
 
-  /// Flattened timeline: newest job first, then per job user → response → completed. (With reverse ListView, first item is at bottom.)
+  /// Flattened timeline: oldest job first, then per job entries by timestamp. Reads top-to-bottom as chronological chat.
   List<JobTimelineEntry> get entriesInOrder => [
-        for (final j in _jobTimelines) ...j.entries,
+        for (final j in _jobTimelines.reversed) ...j.entries,
       ];
 
   int get pollingIntervalMs => _pollingIntervalMs;
@@ -57,6 +74,25 @@ class AppState extends ChangeNotifier {
   void setSelectedMachine(String? machineId) {
     if (_selectedMachineId == machineId) return;
     _selectedMachineId = machineId;
+    if (machineId != null) {
+      final match =
+          _machines.where((m) => m.id == machineId).toList();
+      final allowed =
+          match.isEmpty ? const <String>[] : match.first.clients;
+      if (_selectedClient != null && !allowed.contains(_selectedClient)) {
+        _selectedClient = null;
+      }
+    }
+    if (_selectedClient == null) {
+      final c = availableClients;
+      if (c.isNotEmpty) _selectedClient = c.first;
+    }
+    notifyListeners();
+  }
+
+  void setSelectedClient(String? client) {
+    if (_selectedClient == client) return;
+    _selectedClient = client;
     notifyListeners();
   }
 
@@ -89,8 +125,19 @@ class AppState extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _isLoading = false;
+      if (_selectedClient == null) {
+        final c = availableClients;
+        if (c.isNotEmpty) _selectedClient = c.first;
+      }
       notifyListeners();
     }
+  }
+
+  /// Clears all job timelines (chat). Stops polling.
+  void clearChat() {
+    _jobTimelines = [];
+    _stopPolling();
+    notifyListeners();
   }
 
   Future<void> refreshJobs() async {
@@ -143,9 +190,14 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<Job?> createJob(String prompt) async {
+  Future<Job?> createJob(String prompt, {required String client}) async {
     if (!hasValidApiUrl) {
       _error = 'API base URL not set';
+      notifyListeners();
+      return null;
+    }
+    if (client.trim().isEmpty) {
+      _error = 'Select an app client';
       notifyListeners();
       return null;
     }
@@ -156,9 +208,13 @@ class AppState extends ChangeNotifier {
       final job = await _api.postJob(
         prompt: prompt,
         machineId: _selectedMachineId,
+        client: client,
       );
       // Store job (id from POST response) for polling GET /jobs/:jobId
-      _jobTimelines = [JobWithTimeline.fromJob(job), ..._jobTimelines];
+      _jobTimelines = [
+        JobWithTimeline.fromJob(job, client: client),
+        ..._jobTimelines
+      ];
       _startPolling();
       // Poll immediately so we don't wait for first timer tick
       refreshJobs();

@@ -44,14 +44,18 @@ class ApiClient {
   }
 
   /// POST /jobs
-  /// Sends a job prompt. Optionally include machineId.
+  /// Sends a job prompt. Optionally include machineId and client.
   Future<Job> postJob({
     required String prompt,
     String? machineId,
+    String? client,
   }) async {
     final body = <String, dynamic>{'prompt': prompt};
     if (machineId != null && machineId.isNotEmpty) {
       body['machineId'] = machineId;
+    }
+    if (client != null && client.isNotEmpty) {
+      body['client'] = client;
     }
     final response = await http.post(
       _uri('/jobs'),

@@ -14,6 +14,8 @@ class JobTimelineEntry {
     required this.status,
     required this.jobId,
     required this.timestamp,
+    this.machineId = '',
+    this.client = '',
   });
 
   final JobTimelineRole role;
@@ -21,6 +23,8 @@ class JobTimelineEntry {
   final JobStatus status;
   final String jobId;
   final DateTime timestamp;
+  final String machineId;
+  final String client;
 }
 
 /// A job plus its immutable timeline of messages.
@@ -29,17 +33,22 @@ class JobWithTimeline {
   const JobWithTimeline({
     required this.job,
     required this.entries,
+    this.client,
   });
 
   final Job job;
   final List<JobTimelineEntry> entries;
+  final String? client;
 
   /// Creates the initial timeline: one user message with the prompt and PENDING.
-  static JobWithTimeline fromJob(Job job) {
+  static JobWithTimeline fromJob(Job job, {String? client}) {
     final prompt = job.prompt ?? '—';
     final jobId = job.id ?? '';
+    final machineId = job.machineId ?? '';
+    final clientStr = client ?? '';
     return JobWithTimeline(
       job: job,
+      client: client,
       entries: [
         JobTimelineEntry(
           role: JobTimelineRole.user,
@@ -47,6 +56,8 @@ class JobWithTimeline {
           status: JobStatus.pending,
           jobId: jobId,
           timestamp: DateTime.now(),
+          machineId: machineId,
+          client: clientStr,
         ),
       ],
     );
@@ -60,6 +71,8 @@ class JobWithTimeline {
     final hasDone = next.any((e) => e.status == JobStatus.done);
     final hasError = next.any((e) => e.status == JobStatus.error);
     final jobId = updatedJob.id ?? '';
+    final machineId = updatedJob.machineId ?? '';
+    final clientStr = client ?? '';
 
     if (updatedJob.status == JobStatus.running && !hasRunning) {
       next.add(JobTimelineEntry(
@@ -68,6 +81,8 @@ class JobWithTimeline {
         status: JobStatus.running,
         jobId: jobId,
         timestamp: DateTime.now(),
+        machineId: machineId,
+        client: clientStr,
       ));
     }
     if (updatedJob.status == JobStatus.done && !hasDone) {
@@ -79,6 +94,8 @@ class JobWithTimeline {
         status: JobStatus.done,
         jobId: jobId,
         timestamp: DateTime.now(),
+        machineId: machineId,
+        client: clientStr,
       ));
     }
     if (updatedJob.status == JobStatus.error && !hasError) {
@@ -90,10 +107,12 @@ class JobWithTimeline {
         status: JobStatus.error,
         jobId: jobId,
         timestamp: DateTime.now(),
+        machineId: machineId,
+        client: clientStr,
       ));
     }
 
     next.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    return JobWithTimeline(job: updatedJob, entries: next);
+    return JobWithTimeline(job: updatedJob, entries: next, client: client);
   }
 }

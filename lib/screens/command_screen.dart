@@ -36,8 +36,18 @@ class _CommandScreenState extends State<CommandScreen> {
   void _send() {
     final prompt = _controller.text.trim();
     if (prompt.isEmpty) return;
+    final state = context.read<AppState>();
+    final client = state.selectedClient?.trim();
+    if (client == null || client.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select an app client before sending'),
+        ),
+      );
+      return;
+    }
     _controller.clear();
-    context.read<AppState>().createJob(prompt).then((_) {
+    state.createJob(prompt, client: client).then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -75,9 +85,12 @@ class _CommandScreenState extends State<CommandScreen> {
                 ...state.machines.map((m) {
                   final machineId = m.machineId ?? m.id;
                   final isSelected = state.selectedMachineId == machineId;
+                  final appsText = m.clients.isEmpty
+                      ? (m.status ?? '—')
+                      : '${m.status ?? '—'} · Apps: ${m.clients.join(', ')}';
                   return ListTile(
                     title: Text(machineId.isNotEmpty ? machineId : '—'),
-                    subtitle: Text(m.status ?? '—'),
+                    subtitle: Text(appsText),
                     selected: isSelected,
                     onTap: () {
                       state.setSelectedMachine(
@@ -109,6 +122,37 @@ class _CommandScreenState extends State<CommandScreen> {
       appBar: AppBar(
         title: const Text('Monarch Command'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Clear chat',
+            onPressed: () {
+              final state = context.read<AppState>();
+              if (state.jobTimelines.isEmpty) return;
+              showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Clear chat?'),
+                  content: const Text(
+                    'Remove all messages from this view. This does not cancel jobs on the server.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Clear'),
+                    ),
+                  ],
+                ),
+              ).then((ok) {
+                if (ok == true && context.mounted) {
+                  context.read<AppState>().clearChat();
+                }
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -158,6 +202,64 @@ class _CommandScreenState extends State<CommandScreen> {
                         const Icon(Icons.arrow_drop_down),
                       ],
                     ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // App client selector bar
+          Consumer<AppState>(
+            builder: (_, state, __) {
+              final clients = state.availableClients;
+              final selected = state.selectedClient;
+              return Material(
+                color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.apps,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'App: ',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selected != null && clients.contains(selected)
+                                ? selected
+                                : null,
+                            hint: Text(
+                              clients.isEmpty
+                                  ? 'No clients'
+                                  : 'Select client',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            isExpanded: true,
+                            items: clients
+                                .map((c) => DropdownMenuItem<String>(
+                                      value: c,
+                                      child: Text(c),
+                                    ))
+                                .toList(),
+                            onChanged: clients.isEmpty
+                                ? null
+                                : (String? value) {
+                                    state.setSelectedClient(value);
+                                  },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );

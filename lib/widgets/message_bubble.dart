@@ -13,6 +13,11 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = entry.role == JobTimelineRole.user;
+    final hasTarget = entry.machineId.isNotEmpty || entry.client.isNotEmpty;
+    final targetLabel = [
+      if (entry.machineId.isNotEmpty) entry.machineId,
+      if (entry.client.isNotEmpty) entry.client,
+    ].join(' · ');
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -31,6 +36,21 @@ class MessageBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (hasTarget)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  isUser
+                      ? 'To: $targetLabel'
+                      : 'From: $targetLabel',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
             Text(
               entry.content,
               style: Theme.of(context).textTheme.bodyLarge,
